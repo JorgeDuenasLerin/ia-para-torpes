@@ -108,7 +108,7 @@ El script con el código es: ```view_image.py```
 
 ## Preparando los datos
 
-Si vemos la imágenes cada una de ellas tienen un tamaño y necesitamos tener las imagenes con un tamaño similar para conectarlo a la red neuronal. Aprovechamos este preprocesamiento para hacer que cada valor de los píxeles esté comprendido entre 0 y 1, por último hacemos que la imagen representada por una array bidimensional se transforme en un array de 1 dimensión.
+Si vemos la imágenes cada una de ellas tienen un tamaño y necesitamos tener las imagenes con un tamaño similar para conectarlo a la red neuronal. Aprovechamos este preprocesamiento para hacer que cada valor de los píxeles esté comprendido entre 0 y 1, por último hacemos que la imagen representada por un array bidimensional se transforme en un array de 1 dimensión.
 
 Resumen:
 - Cambiar tamaño imagen ```ts.resize```
@@ -213,12 +213,15 @@ Non-trainable params: 0
 _________________________________________________________________
 ```
 
-Si hacemos una clasificación aleatoria al tener 10 clases acertamos un 10% de las veces. Los resultados y la evolución de nuestra red neuronal es:
+Si hacemos una clasificación aleatoria al tener 10 clases acertamos un 10% de las veces, esperemos que lo mejore.
 
+Los resultados y la evolución de nuestra red neuronal es:
+Ejecución 1:
 ![alt text](images/results/Figure_200_10_res400_2.png "Algunos resultados")
+Ejecución 2:
 ![alt text](images/results/Figure_200_10_res400_3.png "Algunos resultados")
 
-Se ha entrenado el modelo 3 veces con resultados distintos. El acierto está cerca del 90% aunque la red tiene algo de sobreajuste.
+Se ha entrenado el modelo 3 veces con resultados distintos. En los dos anteriores el acierto está cerca del 90% aunque la red tiene algo de sobreajuste.
 
 En otra ejecución el acierto ha sido menor 55%
 ![alt text](images/results/Figure_200_10_res400_1.png "Algunos resultados")
@@ -323,6 +326,11 @@ Se han realizado distintas ejecuciones y distintos ajustes, en todos ellos con u
 El resultado de esta red es:
 
 ![alt text](images/results/Figure_Conv_2.png "Algunos resultados")
+
+### código completo
+
+El código de estas pruebas está:
+- ```redconv10_3.py```
 
 ## Conclusiones-dudas
 

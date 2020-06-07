@@ -2,22 +2,25 @@
 
 Dentro de los posibles dataset que existen en internet hay uno de 102 clases con imágenes de flores. La información está en este [enlace](http://www.robots.ox.ac.uk/~vgg/data/flowers/102/index.html).
 
+Estos datos se usaron para realizar la investigación: "Automated flower classification over a large number of classes".  [Enlace al paper](http://www.robots.ox.ac.uk/~vgg/publications/2008/Nilsback08/nilsback08.pdf)
+
 Estos dataset de pruebas y formación suelen estar incluidos en alguna librería. A Día de hoy (04/06/2020) está contenido en ```tfds-nightly```.
+
 
 ## Cargando dataset tensorflow
 
-Cargamos el dataset y una información de los datos
+Cargamos el dataset (todos los datos) y la información de los datos
 
 ```python
 
 import tensorflow_datasets as tfds
 
-# LA primera vez descargará los datos
+# La primera vez descargará los datos
 labeled_ds, summary = tfds.load('oxford_flowers102', split='train+test+validation', with_info=True)
 
 ```
 
-LA información es la siguiente
+La información es la siguiente
 
 ```python
 
@@ -54,6 +57,285 @@ The test set consists of the remaining 6149 images (minimum 20 per class).',
     }""",
     redistribution_info=,
 )
-
-
 ```
+
+De entre la información podemos destacar:
+- Número de datos: 8189 (test:6149, train: 1020, validation: 1020)
+- Forma de supervisión: imágenes - etiqueta
+
+Si nos vamos a la raíz de nuestro usuario vemos que se ha creado una carpeta ```tensorflow_datasets```... ¿Podremos ver la imágenes? La librería dstf (dataset, tensorflow) implementa la visualización de los datos si le pasamos el dataset y su información
+
+```python
+fig = tfds.show_examples(labeled_ds, summary)
+``` 
+
+![alt text](images/doc/Figure_1.png "Flores del dataset")
+
+
+## Jugando con los Dataset
+
+Vamos a obtener varios elementos, pintar y consultar la información de su etiqueta. Volvemos a traer los datos con el campo ```as_supervised``` a True. De esta forma veremos cómo estarán las fotos y los datos para la supervisión. 
+
+Los datos supervisados vienen en forma de array numérico representando la imagen y un valor numérico representando la clase. El siguiente código muestra una imágen con su etiqueta
+
+```python
+
+import tensorflow as tf
+import tensorflow_datasets as tfds
+import numpy as np
+from matplotlib import pyplot as plt
+
+labeled_ds, summary = tfds.load('oxford_flowers102', split='train+test+validation', with_info=True, as_supervised=True)
+
+e=next(iter(labeled_ds.shuffle(4)))
+
+array_image = e[0]
+value_label = e[1]
+label = tfds.image_classification.oxford_flowers102._NAMES[value_label]
+
+
+plt.imshow(array_image, interpolation='nearest')
+plt.title(label)
+plt.show()
+```
+
+Haciendo un par de ejecuciones y comprobando los resultados con google parace que controlamos los datos.
+
+![alt text](images/doc/Flowers_testing_1.png "Rosa del desierto")
+![alt text](images/doc/Flowers_testing_2.png "Gazania")
+
+El script con el código es: ```view_image.py```
+
+## Preparando los datos
+
+Si vemos la imágenes cada una de ellas tienen un tamaño y necesitamos tener las imagenes con un tamaño similar para conectarlo a la red neuronal. Aprovechamos este preprocesamiento para hacer que cada valor de los píxeles esté comprendido entre 0 y 1, por último hacemos que la imagen representada por una array bidimensional se transforme en un array de 1 dimensión.
+
+Resumen:
+- Cambiar tamaño imagen ```ts.resize```
+- Pasar RGB 255 a RGB 1-0 ```divisón entre 255.0```
+- Aplanar el array ```ts.reshape```
+
+El código de la función para hacer esto sería el siguiente:
+```python
+IMAGE_RES = 300
+
+def format_image(image, label):
+  image = tf.image.resize(image, (IMAGE_RES, IMAGE_RES))/255.0
+  return tf.reshape(image, [-1]), label
+```
+
+Ahora podemos coger la función map de los dataset para aplicarla a todo el conjunto de datos.
+
+```python
+dataset = dataset.map(format_image)
+```
+
+Este conjunto de datos y la división de entrenamiento, validación y test está preparado para el modelo diseñado en el paper. En nuestras pruebas no haremos uso de esa separación.
+
+```python
+tall = tfds.load('oxford_flowers102', split='test+train+validation', as_supervised=True)
+```
+
+En este conjunto de datos tenemos 102 clases, quizá son demsiadas para las primeras pruebas. Vamos a usar la función de filtrado de los dataset para solo coger etiquetas de las 10 primeras clases.
+
+```python
+#Cogemos solo flores de las primeras 10 clases
+dataset = dataset.filter(lambda i,l: l < 10)
+```
+
+```python
+#Información de los datos
+num_training_examples = 1020
+num_validation_examples = 6149
+num_test_examples = 1020
+
+num_all = num_training_examples+num_validation_examples+num_test_examples
+
+tall = tall.shuffle(num_all)
+tall = tall.filter(lambda i,l: l < 10)
+
+item_count = 0
+
+for i in tall:
+    item_count=item_count+1
+
+ntrain = int(0.8 * item_count)
+nval = int(0.2 * item_count)
+
+print('Total: {}'.format(item_count))
+print('Train: {}'.format(ntrain))
+print('Val: {}'.format(nval))
+```
+
+Los datos para esta prueba son:
+- Total: 522 
+- Train: 417 
+- Val: 104 
+
+Para obtener los 2 dataset (train y validation) con estas imágenes/etiquetas ejecutamos la división sobre el dataset filtrado. También configuramos el tamaño del batch y la precarga de un elemento. 
+
+```python
+IMAGE_RES = 400
+BATCH_SIZE = 32
+
+def format_image(image, label):
+  image = tf.image.resize(image, (IMAGE_RES, IMAGE_RES))/255.0
+  return tf.reshape(image, [-1]), label
+
+train_batches = tall.take(ntrain).cache().map(format_image).batch(BATCH_SIZE).prefetch(1)
+validation_batches = tall.skip(ntrain)
+validation_batches = validation_batches.take(nval).cache().map(format_image).batch(BATCH_SIZE).prefetch(1)
+```
+
+
+## Red densa
+
+Vamos a coger una resolución pequeña y configurar una red de la siguiente forma:
+- Entrada: dimensión del array
+- Oculta 1: 200
+- Salida: 10
+- EPOCH: 100
+- Resolución: 400
+
+Compilación:
+```python
+Model: "sequential"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+dense (Dense)                (None, 200)               96000200  
+_________________________________________________________________
+dense_1 (Dense)              (None, 10)                2010      
+=================================================================
+Total params: 96,002,210
+Trainable params: 96,002,210
+Non-trainable params: 0
+_________________________________________________________________
+```
+
+Si hacemos una clasificación aleatoria al tener 10 clases acertamos un 10% de las veces. Los resultados y la evolución de nuestra red neuronal es:
+
+![alt text](images/results/Figure_200_10_res400.png "Algunos resultados")
+
+Con los datos de validación tenemos un acierto del 90%. Parece que en la vuelta 80 ya no hay mejora y que la red tiene algo de sobreajuste.
+
+## Red densa 2
+
+Para reducir el sobre ajuste vamos a poner 120 neuronas en la capa oculta.
+
+### código completo
+
+El código de estas pruebas está:
+- ```reddensa10_200.py```
+- ```reddensa10_120.py```
+
+
+## Red convolucional
+
+Para meter esta información en un red convolucional hay un ajuste que no es necesario hacer. En los ejemplos anteriores transformamos el array 2D de la imagen en un array de 1D. Para la red convolucional no es necesario, por tanto en la función de redimensión quitarmos el ```reshape```
+
+```python
+IMAGE_RES = 300
+
+def format_image(image, label):
+  image = tf.image.resize(image, (IMAGE_RES, IMAGE_RES))/255.0
+  #return tf.reshape(image, [-1]), label   ##No hay reshape
+  return image, label
+```
+
+3 etqpas convolucionales con la reducción, aplanamiento y parte densa.
+ 
+Configuración del modelo:
+```python
+# Modelo
+model = Sequential()
+# padding -> valid -> sin padding
+# 32 filtros
+model.add(Conv2D(32, (3, 3), input_shape=(IMAGE_RES, IMAGE_RES, 3), padding="valid", activation="relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(64, (3, 3), padding="valid", activation="relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(128, (3, 3), padding="valid", activation="relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Flatten())
+model.add(Dense(500, activation='relu'))
+model.add(Dense(102, activation='softmax'))
+
+model.summary()
+```
+
+Resumen:
+```python
+Total Number of Classes: 102
+Model: "sequential"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+conv2d (Conv2D)              (None, 298, 298, 32)      896       
+_________________________________________________________________
+max_pooling2d (MaxPooling2D) (None, 149, 149, 32)      0         
+_________________________________________________________________
+conv2d_1 (Conv2D)            (None, 147, 147, 64)      18496     
+_________________________________________________________________
+max_pooling2d_1 (MaxPooling2 (None, 73, 73, 64)        0         
+_________________________________________________________________
+conv2d_2 (Conv2D)            (None, 71, 71, 128)       73856     
+_________________________________________________________________
+max_pooling2d_2 (MaxPooling2 (None, 35, 35, 128)       0         
+_________________________________________________________________
+flatten (Flatten)            (None, 156800)            0         
+_________________________________________________________________
+dense (Dense)                (None, 500)               78400500  
+_________________________________________________________________
+dense_1 (Dense)              (None, 102)               51102     
+=================================================================
+Total params: 78,544,850
+Trainable params: 78,544,850
+Non-trainable params: 0
+```
+
+Resultado:
+![alt text](images/results/Figure_Conv_32_64_128_D500_D102.png "Algunos resultados")
+
+Explicación:
+Me sorprenden unos datos tan malos
+
+
+## Simplificando los datos
+
+
+
+Analizando los conjuntos de fotos vemos que hay: 8189 (test:6149, train: 1020, validation: 1020). En los ejemplo que hemos visto en clase el conjunto de datos de entrenamiento suele ser mayor que el conjunto de datos de test.
+
+Voy a entrenar la red con el conjunto de test (6149) y validarla con el conjunto train+validation
+
+```python
+tr, ts = tfds.load('oxford_flowers102', split=['test', 'train+validation'], as_supervised=True)
+
+# otro código
+...
+
+# Preparing dataset 
+train_batches = tr.filter(lambda i,l: l < 10).cache().shuffle(num_test_examples//4).map(format_image).batch(BATCH_SIZE).prefetch(1)
+validation_batches = ts.filter(lambda i,l: l < 10).cache().map(format_image).batch(BATCH_SIZE).prefetch(1)
+```
+
+## Densa con datos simplificados
+
+
+
+## Convolución con datos simplificados
+
+Prueba la red convolucional con estos nuevos grupos de datos y solo 10 clases.
+![alt text](images/results/Figure_Conv_32_64_128_D500_D10_res400_Cambiados.png "Algunos resultados")
+
+Los datos ya mejoran y acertamos un 60% de las veces aunque seguimos teniendo sobreajuste
+
+
+
+
+
+## Conclusiones
+
+Relación de pesos.
+

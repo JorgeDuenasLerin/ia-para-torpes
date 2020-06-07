@@ -51,7 +51,7 @@ from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense
 
 model = Sequential()
-model.add(Dense(200, input_dim=IMAGE_RES*IMAGE_RES*3, activation='relu'))
+model.add(Dense(180, input_dim=IMAGE_RES*IMAGE_RES*3, activation='relu'))
 model.add(Dense(10, activation='softmax'))
 
 
@@ -62,7 +62,7 @@ model.compile(
   loss='sparse_categorical_crossentropy',
   metrics=['accuracy'])
 
-EPOCHS = 100
+EPOCHS = 50
 
 history = model.fit(train_batches,
                     epochs=EPOCHS,

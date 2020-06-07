@@ -215,24 +215,51 @@ _________________________________________________________________
 
 Si hacemos una clasificación aleatoria al tener 10 clases acertamos un 10% de las veces. Los resultados y la evolución de nuestra red neuronal es:
 
-![alt text](images/results/Figure_200_10_res400.png "Algunos resultados")
+![alt text](images/results/Figure_200_10_res400_2.png "Algunos resultados")
+![alt text](images/results/Figure_200_10_res400_3.png "Algunos resultados")
 
-Con los datos de validación tenemos un acierto del 90%. Parece que en la vuelta 80 ya no hay mejora y que la red tiene algo de sobreajuste.
+Se ha entrenado el modelo 3 veces con resultados distintos. El acierto está cerca del 90% aunque la red tiene algo de sobreajuste.
+
+En otra ejecución el acierto ha sido menor 55%
+![alt text](images/results/Figure_200_10_res400_1.png "Algunos resultados")
 
 ## Red densa 2
 
-Para reducir el sobre ajuste vamos a poner 120 neuronas en la capa oculta.
+Para reducir el sobre ajuste vamos a poner 170 neuronas en la capa oculta.
+
+El modelo es el siguiente:
+```python
+Model: "sequential"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+dense (Dense)                (None, 170)               81600170  
+_________________________________________________________________
+dense_1 (Dense)              (None, 10)                1710      
+=================================================================
+Total params: 81,601,880
+Trainable params: 81,601,880
+Non-trainable params: 0
+```
+
+![alt text](images/results/Figure_170_10_res400_1.png "Algunos resultados")
+
+En los resultados anteriores se puede ver que los datos de entrenamiento y los de validación van a la par aunque no se estabilizan.
+
+![alt text](images/results/Figure_170_10_res400_2.png "Algunos resultados")
+
+En esta segunda ejecución sigue apareciendo el sobre ajuste.
 
 ### código completo
 
 El código de estas pruebas está:
 - ```reddensa10_200.py```
-- ```reddensa10_120.py```
+- ```reddensa10_170.py```
 
 
 ## Red convolucional
 
-Para meter esta información en un red convolucional hay un ajuste que no es necesario hacer. En los ejemplos anteriores transformamos el array 2D de la imagen en un array de 1D. Para la red convolucional no es necesario, por tanto en la función de redimensión quitarmos el ```reshape```
+Para meter esta información en una red convolucional hay un ajuste que no es necesario hacer. En los ejemplos anteriores transformamos el array 2D de la imagen en un array de 1D, en este caso lo vamos a poner a la capa convolucional 2D, por tanto en la función de redimensión quitarmos el ```reshape```
 
 ```python
 IMAGE_RES = 300
@@ -243,99 +270,73 @@ def format_image(image, label):
   return image, label
 ```
 
-3 etqpas convolucionales con la reducción, aplanamiento y parte densa.
- 
-Configuración del modelo:
+El modelo para esta prueba tiene 2 etapas convolucionales con la reducción (doble), aplanamiento y parte densa.
+
 ```python
 # Modelo
 model = Sequential()
 # padding -> valid -> sin padding
 # 32 filtros
-model.add(Conv2D(32, (3, 3), input_shape=(IMAGE_RES, IMAGE_RES, 3), padding="valid", activation="relu"))
+model.add(Conv2D(4, (3, 3), input_shape=(IMAGE_RES, IMAGE_RES, 3), padding="valid", activation="relu"))
 model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(64, (3, 3), padding="valid", activation="relu"))
 model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(128, (3, 3), padding="valid", activation="relu"))
+model.add(Conv2D(8, (3, 3), padding="valid", activation="relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Flatten())
-model.add(Dense(500, activation='relu'))
-model.add(Dense(102, activation='softmax'))
-
-model.summary()
+model.add(Dense(20, activation="relu"))
+model.add(Dense(10, activation='softmax'))
 ```
 
-Resumen:
+El modelo es:
+
 ```python
-Total Number of Classes: 102
-Model: "sequential"
 _________________________________________________________________
 Layer (type)                 Output Shape              Param #   
 =================================================================
-conv2d (Conv2D)              (None, 298, 298, 32)      896       
+conv2d (Conv2D)              (None, 398, 398, 4)       112       
 _________________________________________________________________
-max_pooling2d (MaxPooling2D) (None, 149, 149, 32)      0         
+max_pooling2d (MaxPooling2D) (None, 199, 199, 4)       0         
 _________________________________________________________________
-conv2d_1 (Conv2D)            (None, 147, 147, 64)      18496     
+max_pooling2d_1 (MaxPooling2 (None, 99, 99, 4)         0         
 _________________________________________________________________
-max_pooling2d_1 (MaxPooling2 (None, 73, 73, 64)        0         
+conv2d_1 (Conv2D)            (None, 97, 97, 8)         296       
 _________________________________________________________________
-conv2d_2 (Conv2D)            (None, 71, 71, 128)       73856     
+max_pooling2d_2 (MaxPooling2 (None, 48, 48, 8)         0         
 _________________________________________________________________
-max_pooling2d_2 (MaxPooling2 (None, 35, 35, 128)       0         
+max_pooling2d_3 (MaxPooling2 (None, 24, 24, 8)         0         
 _________________________________________________________________
-flatten (Flatten)            (None, 156800)            0         
+flatten (Flatten)            (None, 4608)              0         
 _________________________________________________________________
-dense (Dense)                (None, 500)               78400500  
+dense (Dense)                (None, 20)                92180     
 _________________________________________________________________
-dense_1 (Dense)              (None, 102)               51102     
+dense_1 (Dense)              (None, 10)                210       
 =================================================================
-Total params: 78,544,850
-Trainable params: 78,544,850
+Total params: 92,798
+Trainable params: 92,798
 Non-trainable params: 0
+
 ```
 
-Resultado:
-![alt text](images/results/Figure_Conv_32_64_128_D500_D102.png "Algunos resultados")
+Se han realizado distintas ejecuciones y distintos ajustes, en todos ellos con una complejidad menor a cuanto al número de pesos se obtienen resultados mucho mejores.
 
-Explicación:
-Me sorprenden unos datos tan malos
+El resultado de esta red es:
 
+![alt text](images/results/Figure_Conv_2.png "Algunos resultados")
 
-## Simplificando los datos
+## Conclusiones-dudas
 
+### Dudas
+- Hay una gran diferencia entre ejecuciones... supongo que será por el estado inicial aleatorio. ¿Es así?
+- Si el conjunto de entrenamiento y el de validación tienen datos reales ¿Por qué decimos que no generaliza si la validación no está por encima?
+    - Tendría sentido si la validación es de datos reales y el entrenamiento otro tipo de datos.
 
-
-Analizando los conjuntos de fotos vemos que hay: 8189 (test:6149, train: 1020, validation: 1020). En los ejemplo que hemos visto en clase el conjunto de datos de entrenamiento suele ser mayor que el conjunto de datos de test.
-
-Voy a entrenar la red con el conjunto de test (6149) y validarla con el conjunto train+validation
-
-```python
-tr, ts = tfds.load('oxford_flowers102', split=['test', 'train+validation'], as_supervised=True)
-
-# otro código
-...
-
-# Preparing dataset 
-train_batches = tr.filter(lambda i,l: l < 10).cache().shuffle(num_test_examples//4).map(format_image).batch(BATCH_SIZE).prefetch(1)
-validation_batches = ts.filter(lambda i,l: l < 10).cache().map(format_image).batch(BATCH_SIZE).prefetch(1)
-```
-
-## Densa con datos simplificados
+### Relación de pesos
+La redes convolucionales hacen mejor clasificación con imágenes con una complejidad mucho menor.
+CNN ->     92,798
+DNN -> 81,601,880
 
 
+## Otras pruebas
 
-## Convolución con datos simplificados
-
-Prueba la red convolucional con estos nuevos grupos de datos y solo 10 clases.
-![alt text](images/results/Figure_Conv_32_64_128_D500_D10_res400_Cambiados.png "Algunos resultados")
-
-Los datos ya mejoran y acertamos un 60% de las veces aunque seguimos teniendo sobreajuste
-
-
-
-
-
-## Conclusiones
-
-Relación de pesos.
-
+Jugar con las 103 clases.

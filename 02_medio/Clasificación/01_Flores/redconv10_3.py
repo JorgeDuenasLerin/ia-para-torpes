@@ -58,7 +58,9 @@ model = Sequential()
 model.add(Conv2D(4, (3, 3), input_shape=(IMAGE_RES, IMAGE_RES, 3), padding="valid", activation="relu"))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(16, (3, 3), padding="valid", activation="relu"))
+model.add(Conv2D(8, (3, 3), padding="valid", activation="relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Flatten())
 model.add(Dense(20, activation="relu"))
 model.add(Dense(10, activation='softmax'))
@@ -70,7 +72,7 @@ model.compile(
   loss='sparse_categorical_crossentropy',
   metrics=['accuracy'])
 
-EPOCHS = 30
+EPOCHS = 15
 
 history = model.fit(train_batches,
                     epochs=EPOCHS,

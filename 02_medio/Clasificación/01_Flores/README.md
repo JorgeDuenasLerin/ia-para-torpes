@@ -345,6 +345,162 @@ CNN ->     92,798
 DNN -> 81,601,880
 
 
-## Otras pruebas
+## Pruebas con las 102 clases
 
-Jugar con las 103 clases.
+Con el código que tenemos si queremos probar las 102 clases solo tenemos que quitar la parte de filtrado
+
+```python
+#tall = tall.filter(lambda i,l: l < 10)
+```
+
+Al intentar ejecutar la red convolucional el sistema operativo mataba el proceso por un excesivo uso de memoria. Es raro por que el pico de uso ocurría entre la ejecución de épocas, paarece que mi hardware soporta esta red pero en la gestión del dataset consume mucha memoria. Tras tocar el modelo, los datos, el batch_size ha resultado ser que el problema lo causaba la cache de los datos.
+
+![alt text](images/doc/Memory_Error_1.png "Error")
+![alt text](images/doc/Memory_Error_2.png "Error")
+
+Cuando el conjunto de datos es muy grande y no entra en memoria hay que evitar usar la función ```cache()``` durante la preparación.
+
+```python
+train_batches = tall.take(ntrain).map(format_image).batch(BATCH_SIZE).prefetch(1)
+validation_batches = tall.skip(ntrain)
+validation_batches = validation_batches.take(nval).map(format_image).batch(BATCH_SIZE).prefetch(1)
+```
+
+Este cambio incrementa considerablemente el tiempo de entrenamiento del modelo. Cuando usaba la cache recorría una época en 60 segundos, ahora tarda 230 segundos (4 Veces más). Este cambio puede ser mucho mayor en otro tipo de disco duro, ahora mismo los datos están en un SSD.
+
+Código en: ``` redconv102_2.py ```
+
+Datos:
+```python
+Total: 8189
+Train: 6551
+Val: 1637
+
+Resolución: 400px
+Selección de datos en el conjunto: aleatoria
+```
+
+Hiperparámetros:
+```python
+Batch: 32
+```
+
+Modelo:
+```python
+Model: "sequential"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+conv2d (Conv2D)              (None, 398, 398, 4)       112       
+_________________________________________________________________
+max_pooling2d (MaxPooling2D) (None, 199, 199, 4)       0         
+_________________________________________________________________
+max_pooling2d_1 (MaxPooling2 (None, 99, 99, 4)         0         
+_________________________________________________________________
+conv2d_1 (Conv2D)            (None, 97, 97, 8)         296       
+_________________________________________________________________
+max_pooling2d_2 (MaxPooling2 (None, 48, 48, 8)         0         
+_________________________________________________________________
+max_pooling2d_3 (MaxPooling2 (None, 24, 24, 8)         0         
+_________________________________________________________________
+flatten (Flatten)            (None, 4608)              0         
+_________________________________________________________________
+dense (Dense)                (None, 20)                92180     
+_________________________________________________________________
+dense_1 (Dense)              (None, 102)               2142      
+=================================================================
+Total params: 94,730
+Trainable params: 94,730
+Non-trainable params: 0
+_________________________________________________________________
+```
+
+Tiempo ejecución:
+42 minutos
+
+Resultado:
+![alt text](images/results/Figure_Conv_102_2C_1D_res400_1.png "Error")
+
+En esta ejecución no ha llegado a ocurrir el overfit pero se ha alcanzado una acierto solo del 25%. Vamos a probar con una red más compleja.
+
+Tiempo ejecución:
+46 minutos
+
+Resultado:
+![alt text](images/results/Figure_Conv_102_2C_1D_res400_2.png "Error")
+
+Esta ejecución produce 45% de acierto. Vamos a probar con una red más compleja.
+
+
+## Más compleja
+
+Se va a incrementar:
+- 2 capa convolucional, total 4
+- Quitar el doble pooling
+- Aumentar la capa densa a 160
+
+Código en: ``` redconv102_x.py ```
+
+
+Modelo:
+```python
+model = Sequential()
+# padding -> valid -> sin padding
+# 32 filtros
+model.add(Conv2D(4, (3, 3), input_shape=(IMAGE_RES, IMAGE_RES, 3), padding="valid", activation="relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(8, (3, 3), padding="valid", activation="relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(16, (3, 3), padding="valid", activation="relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(32, (3, 3), padding="valid", activation="relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Flatten())
+model.add(Dense(160, activation="relu"))
+model.add(Dense(num_classes, activation='softmax'))
+
+model.summary()
+```
+
+Salida:
+```python
+Model: "sequential"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+conv2d (Conv2D)              (None, 298, 298, 4)       112       
+_________________________________________________________________
+max_pooling2d (MaxPooling2D) (None, 149, 149, 4)       0         
+_________________________________________________________________
+conv2d_1 (Conv2D)            (None, 147, 147, 8)       296       
+_________________________________________________________________
+max_pooling2d_1 (MaxPooling2 (None, 73, 73, 8)         0         
+_________________________________________________________________
+conv2d_2 (Conv2D)            (None, 71, 71, 16)        1168      
+_________________________________________________________________
+max_pooling2d_2 (MaxPooling2 (None, 35, 35, 16)        0         
+_________________________________________________________________
+conv2d_3 (Conv2D)            (None, 33, 33, 32)        4640      
+_________________________________________________________________
+max_pooling2d_3 (MaxPooling2 (None, 16, 16, 32)        0         
+_________________________________________________________________
+flatten (Flatten)            (None, 8192)              0         
+_________________________________________________________________
+dense (Dense)                (None, 160)               1310880   
+_________________________________________________________________
+dense_1 (Dense)              (None, 102)               16422     
+=================================================================
+Total params: 1,333,518
+Trainable params: 1,333,518
+Non-trainable params: 0
+_________________________________________________________________
+
+
+```
+
+Resultado:
+![alt text](images/results/Figure_Conv_102_4C_1D_res400_1.png "Error")
+
+Se ha ejecutado varias veces con resultados similares.
+- En la últimas tandas de cada época, cuando se presentan el conjunto de validación, la red obtiene mejor resultado
+- La red acaba con un valor de exactitud del 98%

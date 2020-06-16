@@ -324,3 +324,7 @@ Resultados:
 ![alt text](images/result/Figure_Conv_3.png "Error")
 
 No tenemos overfiting y tenemos una exactitud cerca del 90%. Dada la complejidad de las fotos es una buena tasa de aciertos.
+
+## Siguiente trabajo
+
+Análisis de filtros [¿Qué hay dentro de la red?](FILTROS.md)

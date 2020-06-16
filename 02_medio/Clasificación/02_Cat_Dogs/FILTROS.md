@@ -2,6 +2,8 @@
 
 ¿Cómo ve nuestra red neuronal las imágenes con los filtros aprendidos?
 
+Vamos a coger cada una de las secciones de nuestra red y probar cómo se ve una imagen al aplicar los filtros aprendidos.
+
 ## Un perro a lo largo de la red
 
 ![alt text](images/result/filters/Perro_1.jpg "Filtro")
@@ -45,3 +47,7 @@ Cuarto filtro
 ![alt text](images/result/filters/Gato_4_4.png "Filtro")
 
 ![alt text](images/result/filters/Gato_4_5.png "Filtro")
+
+## Siguiente trabajo
+
+Transferencia de aprendizaje [¿Usando VGG16?](TRANSFERLEARNING.md)

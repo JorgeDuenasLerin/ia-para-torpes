@@ -1,6 +1,3 @@
-#import tensorflow as tf
-#import tensorflow_datasets as tfds
-#import numpy as np
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
@@ -9,7 +6,7 @@ DIR_PATH="/home/folen/datasets/dogs-vs-cats/"
 DIR_TRAIN=DIR_PATH+"train"
 DIR_VALID=DIR_PATH+"valid"
 
-IMAGE_RES=300
+IMAGE_RES=224
 EPOCHS=15
 BATCH=128
 
@@ -57,25 +54,17 @@ plt.show()
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
 
+from tensorflow.keras.applications import VGG16
+vgg16 = VGG16(weights='imagenet', include_top=False, input_shape=(IMAGE_RES, IMAGE_RES,3))
+vgg16.trainable = False
 
 # Modelo
 model = Sequential()
 # padding -> valid -> sin padding
 # 32 filtros
-model.add(Conv2D(16, (3, 3), input_shape=(IMAGE_RES, IMAGE_RES, 3), padding="valid", activation="relu"))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(32, (3, 3), padding="valid", activation="relu"))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(64, (3, 3), padding="valid", activation="relu"))
-model.add(Dropout(0.2))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(128, (3, 3), padding="valid", activation="relu"))
-model.add(Dropout(0.2))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(256, (3, 3), padding="valid", activation="relu"))
-model.add(Dropout(0.2))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(512, (3, 3), padding="valid", activation="relu"))
+
+model.add(vgg16)
+
 model.add(Flatten())
 model.add(Dense(400, activation="relu"))
 model.add(Dense(100, activation="relu"))

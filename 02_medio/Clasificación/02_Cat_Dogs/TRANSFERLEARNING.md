@@ -143,3 +143,33 @@ _________________________________________________________________
 ```
 
 El problema es que esta ejecución tardaba 3 horas con 100000 muestras y 1 hora con 25000 muestras por EPOCH. Por cada batch (Pasar por filtro, pasar por densa, recalcular)
+
+## Ampliaciones
+
+Solo se usan las 11 primeras capas de VGG, intentamos ver si podemos aprovechar los primeros filtros sin usar los últimos más profundos. Desastre
+![alt text](images/result/Figure_TL_cut_L11.png "L11 VGG16")
+
+Con las 11 capas primeras, se recrea lo que queda de VGG en una red propia y se entrena.
+```python
+model = Sequential()
+model.add(Conv2D(512, (3, 3), input_shape=(activation_w, activation_h, last_layer_filter), padding="valid", activation="relu"))
+model.add(Conv2D(512, (3, 3), padding="valid", activation="relu"))
+model.add(Conv2D(512, (3, 3), padding="valid", activation="relu"))
+model.add(Conv2D(512, (3, 3), padding="valid", activation="relu"))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(512, (3, 3), padding="valid", activation="relu"))
+model.add(Flatten())
+model.add(Dense(300, activation='relu'))
+model.add(Dropout(0.2))
+model.add(Dense(50, activation='relu'))
+model.add(Dropout(0.2))
+model.add(Dense(10, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
+```
+
+No se consigue romper la barrera del 94% de acierto
+Resultados:
+![alt text](images/result/Figure_TL_cut_L11_Conv_1.png "L11 VGG16")
+![alt text](images/result/Figure_TL_cut_L11_Conv_2.png "L11 VGG16")
+
+

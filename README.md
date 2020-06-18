@@ -40,3 +40,4 @@ En realidad es un virtualenv en ``` ~/anaconda3/bin ```. Útil cuando lo integre
     1. [Puerta XOR](01_básicos/01_XOR/)
 2. Medio
     1. [Flores 102](02_medio/Clasificación/01_Flores/README.md)
+    2. [Dogs-Cats](02_medio/Clasificación/02_Cat_Dogs/README.md)

@@ -1,128 +1,88 @@
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
+import numpy as np
+from numpy import save
 
 DIR_PATH="/home/folen/datasets/cuadros/concrete/"
 DIR_TRAIN=DIR_PATH+"train"
 DIR_VALID=DIR_PATH+"valid"
 
-IMAGE_RES=200
+IMAGE_RES=300
 EPOCHS=15
-BATCH=32
+BATCH=36 # El data augmentation daba problemas y devolvía un batch menor. Divisor del conjunto de datos
 
 ntrain=648*5
 nvalid=54
 
-#train_datagen = ImageDataGenerator(rescale=1./255)
+
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import MaxPooling2D
 
 
-train_datagen = ImageDataGenerator(
-    rescale=1./255,
-    rotation_range=5,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    zoom_range=0.4,
-    horizontal_flip=True,
-    fill_mode='nearest'
-)
+vgg16 = VGG16(weights='imagenet', include_top=False, input_shape=(IMAGE_RES, IMAGE_RES,3))
+vgg16.trainable = False # no es necesario pero así haríamos que no se entrene en el fit
 
 
-validation_datagen = ImageDataGenerator(rescale=1./255)
+last_l = vgg16.layers[-1]
+last_shape = last_l.output
 
-train_generator = train_datagen.flow_from_directory(
-        DIR_TRAIN,
+activation_w = last_shape.shape[1].value
+activation_h = last_shape.shape[2].value
+last_layer_filter = last_shape.shape[3].value
+
+print ("Activation size: {0}x{1}".format(activation_w, activation_h))
+print ("Number of filters: {0}".format(last_layer_filter))
+
+
+def activations_fromVGG16(source_dir, num_features, augmented=False):
+    # Memory for data
+    activations = np.zeros((num_features, activation_w, activation_h, last_layer_filter))  # block5_pool shape
+    labels = np.zeros((num_features,))
+
+    if augmented == False:
+        img_generator = ImageDataGenerator(rescale=1. / 255.)
+    else:
+        img_generator = ImageDataGenerator(
+            rescale=1. / 255,
+            rotation_range=5,
+            width_shift_range=0.2,
+            height_shift_range=0.2,
+            zoom_range=0.4,
+            horizontal_flip=True,
+            fill_mode='nearest'
+        )
+
+    batch_size = BATCH
+
+    generator = img_generator.flow_from_directory(
+        source_dir,
         target_size=(IMAGE_RES, IMAGE_RES),
-        batch_size=BATCH,
+        batch_size=batch_size,
         class_mode='binary')
 
-validation_generator = validation_datagen.flow_from_directory(
-        DIR_VALID,
-        target_size=(IMAGE_RES, IMAGE_RES),
-        batch_size=BATCH,
-        class_mode='binary')
+    i = num_features // batch_size - 1
+    total_batchs = i
+    for input_batch, label_batch in generator:
+        # each image enters in the vgg16 model
+        output_batch = vgg16.predict(input_batch)
+        activations[i * batch_size:(i + 1) * batch_size] = output_batch
+        labels[i * batch_size:(i + 1) * batch_size] = label_batch  # labels
+        print("Batch: {0}/{1}".format(i, total_batchs))
+        i -= 1
+        if i == -1:
+            break
 
-"""
-# Pinta imágenes y comprueba etiqueta
-e=next(iter(train_generator))
-
-array_image = e[0][0]
-value_label = e[1][0]
-
-plt.imshow(array_image, interpolation='nearest')
-plt.title(value_label)
-plt.show()
-
-exit()
-"""
-
-# MODELO
-from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
+    return activations, labels
 
 
-# Modelo
-model = Sequential()
-# padding -> valid -> sin padding
-# 32 filtros
-model.add(Conv2D(32, (3, 3), input_shape=(IMAGE_RES, IMAGE_RES, 3), padding="valid", activation="relu"))
-model.add(Conv2D(32, (3, 3), padding="valid", activation="relu"))
-model.add(Conv2D(32, (3, 3), padding="valid", activation="relu"))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(64, (3, 3), padding="valid", activation="relu"))
-model.add(Conv2D(64, (3, 3), padding="valid", activation="relu"))
-model.add(Conv2D(64, (3, 3), padding="valid", activation="relu"))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(128, (3, 3), padding="valid", activation="relu"))
-model.add(Conv2D(128, (3, 3), padding="valid", activation="relu"))
-model.add(Conv2D(128, (3, 3), padding="valid", activation="relu"))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Flatten())
-model.add(Dense(100, activation="relu"))
-model.add(Dropout(0.1))
-model.add(Dense(20, activation="relu"))
-model.add(Dropout(0.1))
-model.add(Dense(1, activation='sigmoid'))
+train_data_dir = DIR_TRAIN
+validation_data_dir = DIR_VALID
 
-model.summary()
+train_activations, train_labels = activations_fromVGG16(train_data_dir, ntrain, True)
+validation_activations, validation_labels = activations_fromVGG16(validation_data_dir, nvalid)
 
-model.compile(
-  optimizer='rmsprop',
-  loss='binary_crossentropy',
-  metrics=['accuracy'])
-
-
-history = model.fit(train_generator,
-                    steps_per_epoch=ntrain//BATCH,
-                    #steps_per_epoch=4000//BATCH,
-                    epochs=EPOCHS,
-                    batch_size=BATCH,
-                    validation_data=validation_generator,
-                    validation_steps=nvalid//BATCH
-                    #validation_steps=800//BATCH
-                    )
-
-
-
-acc = history.history['acc']
-val_acc = history.history['val_acc']
-
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-
-epochs_range = range(EPOCHS)
-
-plt.figure(figsize=(8, 8))
-plt.subplot(1, 2, 1)
-plt.plot(epochs_range, acc, label='Training Accuracy')
-plt.plot(epochs_range, val_acc, label='Validation Accuracy')
-plt.legend(loc='lower right')
-plt.title('Training and Validation Accuracy')
-
-plt.subplot(1, 2, 2)
-plt.plot(epochs_range, loss, label='Training Loss')
-plt.plot(epochs_range, val_loss, label='Validation Loss')
-plt.legend(loc='upper right')
-plt.title('Training and Validation Loss')
-plt.show()
-
-# Guardar el Modelo
-model.save('conv2.h5')
+save('train_activations_aug.npy', train_activations)
+save('train_labels_aug.npy', train_labels)
+save('validation_activations_aug.npy', validation_activations)
+save('validation_labels_aug.npy', validation_labels)

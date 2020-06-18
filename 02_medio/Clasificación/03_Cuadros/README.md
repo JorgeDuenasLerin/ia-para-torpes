@@ -25,9 +25,11 @@ nvalid=54
 
 Algunas imágenes
 Edgar: Clase 0
+
 ![alt text](images/docs/Figure_2.png "Ejemplo")
 
 Vicent: Clase 1
+
 ![alt text](images/docs/Figure_1.png "Ejemplo")
 
 ## Redconvolucional y data augmentation
@@ -106,3 +108,19 @@ Non-trainable params: 0
 Conseguimos cerca del 80% - 90%
 
 ![alt text](images/results/Figure_1.png "Resultados")
+
+# Red VGG
+
+Probando con la red VGG y conectando una red densa después se consiguen mejores resultados: 94% exactitud.
+
+```python
+model = Sequential()
+model.add(Flatten(input_shape=(activation_w, activation_h, last_layer_filter)))
+model.add(Dense(250, activation="relu"))
+model.add(Dropout(0.4))
+model.add(Dense(20, activation="relu"))
+model.add(Dropout(0.2))
+model.add(Dense(1, activation='sigmoid'))
+```
+
+![alt text](images/results/Figure_VGG_Densa_4.png "Resultados")

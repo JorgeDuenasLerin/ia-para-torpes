@@ -51,3 +51,9 @@ Comparados el cuadro original.
 
 ¿Qué pasa con los colores?
 Mañana probaré con los cuadros de todos los artistas en vez de solo dos.
+
+## Conclusiones
+
+Parece que los autoencoders no están diseñados para reproducir al 100% la imagen original si no para comprimir la información. Por eso es imposible que aparezcan nítidas.
+
+Para eso existen las GAN 
